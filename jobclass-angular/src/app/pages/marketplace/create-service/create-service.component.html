@@ -1,0 +1,618 @@
+<div class="create-service-container">
+  <!-- Header -->
+  <div class="service-header">
+    <h1>Create New Service</h1>
+    <div class="header-actions">
+      <button class="btn-secondary" (click)="saveAsDraft()">
+        <i class="fas fa-save"></i> Save as Draft
+      </button>
+      <button class="btn-outline" (click)="togglePreview()">
+        <i class="fas fa-eye"></i> Preview
+      </button>
+      <button class="btn-primary" routerLink="/marketplace/freelancer-dashboard">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+      </button>
+    </div>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="progress-container">
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="(currentStep / totalSteps) * 100"></div>
+    </div>
+    <div class="progress-steps">
+      <div *ngFor="let step of [1,2,3,4,5]; let i = index"
+           class="progress-step"
+           [class.active]="currentStep >= step"
+           [class.current]="currentStep === step"
+           (click)="goToStep(step)">
+        <div class="step-number">{{ step }}</div>
+        <div class="step-title">{{ getStepTitle(step) }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Container -->
+  <div class="form-container" [class.preview-mode]="previewMode">
+    <form [formGroup]="serviceForm">
+
+      <!-- Step 1: Basic Information -->
+      <div class="form-step" *ngIf="currentStep === 1">
+        <h2>Basic Information</h2>
+        <p class="step-description">Start with the basics. Let clients know what you're offering.</p>
+
+        <div class="form-group">
+          <label for="title">Service Title <span class="required">*</span></label>
+          <input type="text"
+                 id="title"
+                 formControlName="title"
+                 placeholder="I will create a professional website"
+                 maxlength="80">
+          <div class="character-count">
+            {{ getCharacterCount('title') }}/{{ getMaxCharacters('title') }} characters
+          </div>
+          <div class="error-message" *ngIf="serviceForm.get('title')?.touched && serviceForm.get('title')?.errors">
+            <span *ngIf="serviceForm.get('title')?.errors?.['required']">Title is required</span>
+            <span *ngIf="serviceForm.get('title')?.errors?.['minlength']">Title must be at least 10 characters</span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="category">Category <span class="required">*</span></label>
+            <select id="category" formControlName="category" (change)="onCategoryChange($event)">
+              <option value="">Select a category</option>
+              <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="subcategory">Subcategory <span class="required">*</span></label>
+            <select id="subcategory" formControlName="subcategory" [disabled]="!serviceForm.get('category')?.value">
+              <option value="">Select a subcategory</option>
+              <option *ngFor="let subcat of subcategories" [value]="subcat">{{ subcat }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Search Tags (Maximum 5)</label>
+          <div class="tags-container">
+            <div class="tag"
+                 *ngFor="let tag of tags"
+                 [class.selected]="selectedTags.includes(tag)"
+                 (click)="toggleTag(tag)">
+              {{ tag }}
+            </div>
+          </div>
+          <div class="selected-tags" *ngIf="selectedTags.length > 0">
+            <span class="label">Selected:</span>
+            <span class="selected-tag" *ngFor="let tag of selectedTags">
+              {{ tag }}
+              <i class="fas fa-times" (click)="toggleTag(tag)"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Service Description -->
+      <div class="form-step" *ngIf="currentStep === 2">
+        <h2>Service Description</h2>
+        <p class="step-description">Describe your service in detail.</p>
+
+        <div class="form-group">
+          <label for="description">Description <span class="required">*</span></label>
+          <textarea id="description"
+                    formControlName="description"
+                    rows="8"
+                    placeholder="Describe your service in detail. What makes it unique? What will the buyer get?"
+                    maxlength="1200"></textarea>
+          <div class="character-count">
+            {{ getCharacterCount('description') }}/{{ getMaxCharacters('description') }} characters
+          </div>
+          <div class="error-message" *ngIf="serviceForm.get('description')?.touched && serviceForm.get('description')?.errors">
+            <span *ngIf="serviceForm.get('description')?.errors?.['required']">Description is required</span>
+            <span *ngIf="serviceForm.get('description')?.errors?.['minlength']">Description must be at least 120 characters</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>What's Included <span class="required">*</span></label>
+          <div class="dynamic-list">
+            <div *ngFor="let include of serviceIncludes.controls; let i = index" class="dynamic-item">
+              <input type="text"
+                     [formControl]="include"
+                     placeholder="e.g., 3 Page Website">
+              <button type="button" class="btn-remove" (click)="removeServiceInclude(i)" [disabled]="serviceIncludes.length <= 1">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <button type="button" class="btn-add" (click)="addServiceInclude()">
+              <i class="fas fa-plus"></i> Add Item
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="requirements">Buyer Requirements <span class="required">*</span></label>
+          <textarea id="requirements"
+                    formControlName="requirements"
+                    rows="5"
+                    placeholder="What information or materials do you need from the buyer to get started?"
+                    maxlength="450"></textarea>
+          <div class="character-count">
+            {{ getCharacterCount('requirements') }}/{{ getMaxCharacters('requirements') }} characters
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Pricing & Packages -->
+      <div class="form-step" *ngIf="currentStep === 3">
+        <h2>Pricing & Packages</h2>
+        <p class="step-description">Set your pricing structure.</p>
+
+        <div class="pricing-type-selector">
+          <label>
+            <input type="radio" formControlName="pricingType" value="packages">
+            <span>Fixed Packages</span>
+          </label>
+          <label>
+            <input type="radio" formControlName="pricingType" value="hourly">
+            <span>Hourly Rate</span>
+          </label>
+        </div>
+
+        <!-- Package Pricing -->
+        <div *ngIf="serviceForm.get('pricingType')?.value === 'packages'" class="packages-container">
+          <div class="packages-grid">
+            <!-- Basic Package -->
+            <div class="package-card" formGroupName="basicPackage">
+              <h3>Basic</h3>
+
+              <div class="form-group">
+                <label>Package Name</label>
+                <input type="text" formControlName="name" placeholder="Basic">
+              </div>
+
+              <div class="form-group">
+                <label>Description <span class="required">*</span></label>
+                <textarea formControlName="description"
+                          rows="3"
+                          placeholder="Describe what's included in this package"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label>Price (USD) <span class="required">*</span></label>
+                <div class="price-input">
+                  <span class="currency">$</span>
+                  <input type="number" formControlName="price" min="5" step="5">
+                </div>
+                <div class="earnings-estimate">
+                  You'll receive: ${{ calculateEarnings(serviceForm.get('basicPackage.price')?.value || 0) | number:'1.2-2' }}
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Delivery Time (days) <span class="required">*</span></label>
+                  <input type="number" formControlName="deliveryTime" min="1">
+                </div>
+
+                <div class="form-group">
+                  <label>Revisions <span class="required">*</span></label>
+                  <input type="number" formControlName="revisions" min="0">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Features</label>
+                <div class="dynamic-list">
+                  <div *ngFor="let feature of getPackageFeatures('basic').controls; let i = index" class="dynamic-item">
+                    <input type="text" [formControl]="feature" placeholder="Feature">
+                    <button type="button" class="btn-remove" (click)="removePackageFeature('basic', i)">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <button type="button" class="btn-add" (click)="addPackageFeature('basic')">
+                    <i class="fas fa-plus"></i> Add Feature
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Standard Package -->
+            <div class="package-card featured" formGroupName="standardPackage">
+              <div class="recommended-badge">Most Popular</div>
+              <h3>Standard</h3>
+
+              <div class="form-group">
+                <label>Package Name</label>
+                <input type="text" formControlName="name" placeholder="Standard">
+              </div>
+
+              <div class="form-group">
+                <label>Description <span class="required">*</span></label>
+                <textarea formControlName="description"
+                          rows="3"
+                          placeholder="Describe what's included in this package"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label>Price (USD) <span class="required">*</span></label>
+                <div class="price-input">
+                  <span class="currency">$</span>
+                  <input type="number" formControlName="price" min="5" step="5">
+                </div>
+                <div class="earnings-estimate">
+                  You'll receive: ${{ calculateEarnings(serviceForm.get('standardPackage.price')?.value || 0) | number:'1.2-2' }}
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Delivery Time (days) <span class="required">*</span></label>
+                  <input type="number" formControlName="deliveryTime" min="1">
+                </div>
+
+                <div class="form-group">
+                  <label>Revisions <span class="required">*</span></label>
+                  <input type="number" formControlName="revisions" min="0">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Features</label>
+                <div class="dynamic-list">
+                  <div *ngFor="let feature of getPackageFeatures('standard').controls; let i = index" class="dynamic-item">
+                    <input type="text" [formControl]="feature" placeholder="Feature">
+                    <button type="button" class="btn-remove" (click)="removePackageFeature('standard', i)">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <button type="button" class="btn-add" (click)="addPackageFeature('standard')">
+                    <i class="fas fa-plus"></i> Add Feature
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Premium Package -->
+            <div class="package-card" formGroupName="premiumPackage">
+              <h3>Premium</h3>
+
+              <div class="form-group">
+                <label>Package Name</label>
+                <input type="text" formControlName="name" placeholder="Premium">
+              </div>
+
+              <div class="form-group">
+                <label>Description <span class="required">*</span></label>
+                <textarea formControlName="description"
+                          rows="3"
+                          placeholder="Describe what's included in this package"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label>Price (USD) <span class="required">*</span></label>
+                <div class="price-input">
+                  <span class="currency">$</span>
+                  <input type="number" formControlName="price" min="5" step="5">
+                </div>
+                <div class="earnings-estimate">
+                  You'll receive: ${{ calculateEarnings(serviceForm.get('premiumPackage.price')?.value || 0) | number:'1.2-2' }}
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Delivery Time (days) <span class="required">*</span></label>
+                  <input type="number" formControlName="deliveryTime" min="1">
+                </div>
+
+                <div class="form-group">
+                  <label>Revisions <span class="required">*</span></label>
+                  <input type="number" formControlName="revisions" min="0">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Features</label>
+                <div class="dynamic-list">
+                  <div *ngFor="let feature of getPackageFeatures('premium').controls; let i = index" class="dynamic-item">
+                    <input type="text" [formControl]="feature" placeholder="Feature">
+                    <button type="button" class="btn-remove" (click)="removePackageFeature('premium', i)">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <button type="button" class="btn-add" (click)="addPackageFeature('premium')">
+                    <i class="fas fa-plus"></i> Add Feature
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hourly Pricing -->
+        <div *ngIf="serviceForm.get('pricingType')?.value === 'hourly'" class="hourly-pricing">
+          <div class="form-group">
+            <label>Hourly Rate (USD) <span class="required">*</span></label>
+            <div class="price-input">
+              <span class="currency">$</span>
+              <input type="number" formControlName="hourlyRate" min="5" step="5">
+              <span class="suffix">/hour</span>
+            </div>
+            <div class="earnings-estimate">
+              You'll receive: ${{ calculateEarnings(serviceForm.get('hourlyRate')?.value || 0) | number:'1.2-2' }}/hour after fees
+            </div>
+          </div>
+        </div>
+
+        <!-- Extra Services -->
+        <div class="extras-section">
+          <h3>Extra Services (Optional)</h3>
+          <p>Offer additional services for an extra fee</p>
+
+          <div class="extras-list">
+            <div *ngFor="let extra of extras.controls; let i = index" [formGroup]="extra" class="extra-item">
+              <div class="form-row">
+                <div class="form-group">
+                  <input type="text" formControlName="title" placeholder="Extra service title">
+                </div>
+                <div class="form-group">
+                  <div class="price-input">
+                    <span class="currency">$</span>
+                    <input type="number" formControlName="price" min="5" step="5">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <input type="number" formControlName="deliveryTime" min="1" placeholder="Days">
+                </div>
+                <button type="button" class="btn-remove" (click)="removeExtra(i)">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="form-group">
+                <input type="text" formControlName="description" placeholder="Brief description">
+              </div>
+            </div>
+
+            <button type="button" class="btn-add" (click)="addExtra()">
+              <i class="fas fa-plus"></i> Add Extra Service
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Gallery & Portfolio -->
+      <div class="form-step" *ngIf="currentStep === 4">
+        <h2>Gallery & Portfolio</h2>
+        <p class="step-description">Showcase your work with images and portfolio items.</p>
+
+        <div class="form-group">
+          <label>Service Thumbnail <span class="required">*</span></label>
+          <div class="upload-area">
+            <input type="file"
+                   id="thumbnail"
+                   accept="image/*"
+                   (change)="onFileUpload($event, 'thumbnail')"
+                   hidden>
+            <label for="thumbnail" class="upload-label">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <span>Click to upload thumbnail image</span>
+              <small>Recommended size: 1280x800px</small>
+            </label>
+            <div class="uploaded-file" *ngIf="serviceForm.get('thumbnailImage')?.value">
+              <i class="fas fa-image"></i>
+              {{ serviceForm.get('thumbnailImage')?.value }}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Gallery Images (Up to 5)</label>
+          <div class="upload-area">
+            <input type="file"
+                   id="gallery"
+                   accept="image/*"
+                   multiple
+                   (change)="onFileUpload($event, 'gallery')"
+                   hidden>
+            <label for="gallery" class="upload-label">
+              <i class="fas fa-images"></i>
+              <span>Click to upload gallery images</span>
+              <small>Show different aspects of your service</small>
+            </label>
+          </div>
+
+          <div class="gallery-preview" *ngIf="galleryItems.length > 0">
+            <div *ngFor="let item of galleryItems; let i = index" class="gallery-item">
+              <img [src]="item.url" alt="Gallery image">
+              <button type="button" class="btn-remove" (click)="removeGalleryItem(i)">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Video URL (Optional)</label>
+          <input type="url"
+                 formControlName="videoUrl"
+                 placeholder="https://youtube.com/watch?v=...">
+        </div>
+
+        <div class="form-group">
+          <label>Portfolio Links</label>
+          <div class="dynamic-list">
+            <div *ngFor="let link of portfolioLinks.controls; let i = index" class="dynamic-item">
+              <input type="url"
+                     [formControl]="link"
+                     placeholder="https://example.com/portfolio">
+              <button type="button" class="btn-remove" (click)="removePortfolioLink(i)">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <button type="button" class="btn-add" (click)="addPortfolioLink()">
+              <i class="fas fa-plus"></i> Add Portfolio Link
+            </button>
+          </div>
+        </div>
+
+        <!-- FAQs -->
+        <div class="faqs-section">
+          <h3>Frequently Asked Questions</h3>
+          <p>Add FAQs to help buyers understand your service better</p>
+
+          <div class="faqs-list">
+            <div *ngFor="let faq of faqs.controls; let i = index" [formGroup]="faq" class="faq-item">
+              <div class="form-group">
+                <input type="text" formControlName="question" placeholder="Question">
+              </div>
+              <div class="form-group">
+                <textarea formControlName="answer" rows="2" placeholder="Answer"></textarea>
+              </div>
+              <button type="button" class="btn-remove" (click)="removeFAQ(i)">
+                <i class="fas fa-times"></i> Remove
+              </button>
+            </div>
+
+            <button type="button" class="btn-add" (click)="addFAQ()">
+              <i class="fas fa-plus"></i> Add FAQ
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5: Review & Publish -->
+      <div class="form-step" *ngIf="currentStep === 5">
+        <h2>Review & Publish</h2>
+        <p class="step-description">Review your service listing before publishing.</p>
+
+        <div class="review-section">
+          <div class="review-card">
+            <h3>Service Overview</h3>
+            <div class="review-item">
+              <span class="label">Title:</span>
+              <span>{{ serviceForm.get('title')?.value }}</span>
+            </div>
+            <div class="review-item">
+              <span class="label">Category:</span>
+              <span>{{ serviceForm.get('category')?.value }} > {{ serviceForm.get('subcategory')?.value }}</span>
+            </div>
+            <div class="review-item">
+              <span class="label">Tags:</span>
+              <span>{{ selectedTags.join(', ') || 'None' }}</span>
+            </div>
+          </div>
+
+          <div class="review-card">
+            <h3>Pricing Summary</h3>
+            <div *ngIf="serviceForm.get('pricingType')?.value === 'packages'">
+              <div class="review-item">
+                <span class="label">Basic Package:</span>
+                <span>${{ serviceForm.get('basicPackage.price')?.value }}</span>
+              </div>
+              <div class="review-item">
+                <span class="label">Standard Package:</span>
+                <span>${{ serviceForm.get('standardPackage.price')?.value }}</span>
+              </div>
+              <div class="review-item">
+                <span class="label">Premium Package:</span>
+                <span>${{ serviceForm.get('premiumPackage.price')?.value }}</span>
+              </div>
+            </div>
+            <div *ngIf="serviceForm.get('pricingType')?.value === 'hourly'">
+              <div class="review-item">
+                <span class="label">Hourly Rate:</span>
+                <span>${{ serviceForm.get('hourlyRate')?.value }}/hour</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="review-card">
+            <h3>Service Settings</h3>
+            <div class="settings-options">
+              <label class="checkbox-label">
+                <input type="checkbox" formControlName="expressDelivery">
+                <span>Offer Express Delivery</span>
+              </label>
+
+              <div *ngIf="serviceForm.get('expressDelivery')?.value" class="express-settings">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Express Delivery Days</label>
+                    <input type="number" formControlName="expressDeliveryDays" min="1">
+                  </div>
+                  <div class="form-group">
+                    <label>Additional Price</label>
+                    <div class="price-input">
+                      <span class="currency">$</span>
+                      <input type="number" formControlName="expressDeliveryPrice" min="0" step="5">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <label class="checkbox-label">
+                <input type="checkbox" formControlName="customOrder">
+                <span>Accept Custom Orders</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="review-card">
+            <h3>SEO Settings (Optional)</h3>
+            <div class="form-group">
+              <label>SEO Title</label>
+              <input type="text" formControlName="seoTitle" placeholder="Custom title for search engines">
+            </div>
+            <div class="form-group">
+              <label>SEO Description</label>
+              <textarea formControlName="seoDescription" rows="2" placeholder="Meta description for search engines"></textarea>
+            </div>
+            <div class="form-group">
+              <label>SEO Keywords</label>
+              <input type="text" formControlName="seoKeywords" placeholder="Comma-separated keywords">
+            </div>
+          </div>
+        </div>
+
+        <div class="publish-notice">
+          <i class="fas fa-info-circle"></i>
+          <div>
+            <h4>Before Publishing</h4>
+            <ul>
+              <li>Make sure all information is accurate and complete</li>
+              <li>Check that your pricing is competitive</li>
+              <li>Ensure your images are high quality and relevant</li>
+              <li>Your service will be reviewed before going live (usually within 24 hours)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Navigation Buttons -->
+  <div class="form-navigation">
+    <button class="btn-secondary"
+            (click)="previousStep()"
+            [disabled]="currentStep === 1">
+      <i class="fas fa-arrow-left"></i> Previous
+    </button>
+
+    <button class="btn-primary"
+            (click)="nextStep()"
+            *ngIf="currentStep < totalSteps">
+      Next <i class="fas fa-arrow-right"></i>
+    </button>
+
+    <button class="btn-success"
+            (click)="publishService()"
+            *ngIf="currentStep === totalSteps">
+      <i class="fas fa-check"></i> Publish Service
+    </button>
+  </div>
+</div>

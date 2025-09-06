@@ -1,0 +1,307 @@
+<div class="manage-orders-container">
+  <!-- Header Section -->
+  <div class="orders-header">
+    <h1>Manage Orders</h1>
+    <div class="header-actions">
+      <button class="btn-primary" routerLink="/marketplace/freelancer-dashboard">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="statistics-grid">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-shopping-cart"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ statistics.totalOrders }}</h3>
+        <p>Total Orders</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ statistics.completedOrders }}</h3>
+        <p>Completed</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ statistics.activeOrders }}</h3>
+        <p>Active Orders</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-dollar-sign"></i>
+      </div>
+      <div class="stat-content">
+        <h3>${{ statistics.totalEarnings | number:'1.2-2' }}</h3>
+        <p>Total Earnings</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-star"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ statistics.averageRating | number:'1.1-1' }}</h3>
+        <p>Average Rating</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-percentage"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ statistics.completionRate | number:'1.0-0' }}%</h3>
+        <p>Completion Rate</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Sorting -->
+  <div class="filters-section">
+    <div class="filter-group">
+      <label>Filter by Status:</label>
+      <select [(ngModel)]="filterStatus" (change)="filterOrders()">
+        <option value="all">All Orders</option>
+        <option value="pending">Pending</option>
+        <option value="in_progress">In Progress</option>
+        <option value="delivered">Delivered</option>
+        <option value="completed">Completed</option>
+        <option value="revision">Under Revision</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>Sort by:</label>
+      <select [(ngModel)]="sortBy" (change)="sortOrders()">
+        <option value="date">Order Date</option>
+        <option value="delivery">Delivery Date</option>
+        <option value="price">Price</option>
+        <option value="status">Status</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Orders Grid -->
+  <div class="orders-grid">
+    <div class="orders-list">
+      <div *ngFor="let order of filteredOrders"
+           class="order-card"
+           [class.selected]="selectedOrder?.id === order.id"
+           (click)="selectOrder(order)">
+
+        <div class="order-header">
+          <div class="order-info">
+            <h3>{{ order.serviceTitle }}</h3>
+            <p class="order-id">Order #{{ order.id }}</p>
+          </div>
+          <span class="order-status" [ngClass]="getStatusClass(order.status)">
+            {{ order.status | titlecase }}
+          </span>
+        </div>
+
+        <div class="order-client">
+          <img [src]="order.clientAvatar" [alt]="order.clientName" class="client-avatar">
+          <span>{{ order.clientName }}</span>
+        </div>
+
+        <div class="order-details">
+          <div class="detail-row">
+            <span class="label">Order Date:</span>
+            <span>{{ order.orderDate | date:'MMM dd, yyyy' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Delivery:</span>
+            <span [class.urgent]="getDaysRemaining(order.deliveryDate) < 3">
+              {{ order.deliveryDate | date:'MMM dd, yyyy' }}
+              <span *ngIf="order.status === 'in_progress'" class="days-remaining">
+                ({{ getDaysRemaining(order.deliveryDate) }} days)
+              </span>
+            </span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Amount:</span>
+            <span class="price">${{ order.price | number:'1.2-2' }}</span>
+          </div>
+        </div>
+
+        <div class="order-actions">
+          <button *ngIf="order.status === 'pending'"
+                  class="btn-sm btn-primary"
+                  (click)="updateOrderStatus(order.id, 'in_progress'); $event.stopPropagation()">
+            Accept Order
+          </button>
+          <button *ngIf="order.status === 'in_progress'"
+                  class="btn-sm btn-success"
+                  (click)="deliverOrder(order.id); $event.stopPropagation()">
+            Deliver Order
+          </button>
+          <button class="btn-sm btn-secondary"
+                  (click)="navigateToOrderDetails(order.id); $event.stopPropagation()">
+            View Details
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="filteredOrders.length === 0" class="no-orders">
+        <i class="fas fa-inbox"></i>
+        <p>No orders found</p>
+      </div>
+    </div>
+
+    <!-- Order Details Panel -->
+    <div class="order-details-panel" *ngIf="selectedOrder">
+      <div class="panel-header">
+        <h2>Order Details</h2>
+        <button class="btn-close" (click)="selectedOrder = null">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="panel-content">
+        <div class="detail-section">
+          <h3>{{ selectedOrder.serviceTitle }}</h3>
+          <p class="order-id">Order #{{ selectedOrder.id }}</p>
+
+          <div class="status-badge" [ngClass]="getStatusClass(selectedOrder.status)">
+            <i class="fas fa-info-circle"></i>
+            Status: {{ selectedOrder.status | titlecase }}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Client Information</h4>
+          <div class="client-info">
+            <img [src]="selectedOrder.clientAvatar" [alt]="selectedOrder.clientName" class="client-avatar-large">
+            <div>
+              <p class="client-name">{{ selectedOrder.clientName }}</p>
+              <p class="order-date">Ordered on {{ selectedOrder.orderDate | date:'fullDate' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Order Description</h4>
+          <p>{{ selectedOrder.description }}</p>
+        </div>
+
+        <div class="detail-section" *ngIf="selectedOrder.attachments && selectedOrder.attachments.length > 0">
+          <h4>Attachments</h4>
+          <div class="attachments-list">
+            <div *ngFor="let file of selectedOrder.attachments" class="attachment-item">
+              <i class="fas fa-file-pdf"></i>
+              <span>{{ file }}</span>
+              <button (click)="downloadAttachment(file)" class="btn-download">
+                <i class="fas fa-download"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Delivery Information</h4>
+          <div class="delivery-info">
+            <div class="info-row">
+              <span>Delivery Date:</span>
+              <strong>{{ selectedOrder.deliveryDate | date:'MMM dd, yyyy' }}</strong>
+            </div>
+            <div class="info-row" *ngIf="selectedOrder.status === 'in_progress'">
+              <span>Time Remaining:</span>
+              <strong [class.urgent]="getDaysRemaining(selectedOrder.deliveryDate) < 3">
+                {{ getDaysRemaining(selectedOrder.deliveryDate) }} days
+              </strong>
+            </div>
+            <div class="info-row">
+              <span>Order Amount:</span>
+              <strong class="price">${{ selectedOrder.price | number:'1.2-2' }}</strong>
+            </div>
+            <div class="info-row" *ngIf="selectedOrder.revisionCount">
+              <span>Revisions:</span>
+              <strong>{{ selectedOrder.revisionCount }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Messages Section -->
+        <div class="detail-section">
+          <h4>Messages</h4>
+          <div class="messages-container">
+            <div class="messages-list" *ngIf="selectedOrder.messages && selectedOrder.messages.length > 0">
+              <div *ngFor="let message of selectedOrder.messages"
+                   class="message"
+                   [class.client-message]="message.sender === 'client'"
+                   [class.freelancer-message]="message.sender === 'freelancer'">
+                <div class="message-header">
+                  <span class="sender">{{ message.sender === 'client' ? selectedOrder.clientName : 'You' }}</span>
+                  <span class="timestamp">{{ message.timestamp | date:'short' }}</span>
+                </div>
+                <p class="message-content">{{ message.content }}</p>
+              </div>
+            </div>
+
+            <div *ngIf="!selectedOrder.messages || selectedOrder.messages.length === 0" class="no-messages">
+              <p>No messages yet</p>
+            </div>
+
+            <div class="message-input">
+              <textarea [(ngModel)]="newMessage"
+                        placeholder="Type your message..."
+                        rows="3"></textarea>
+              <button (click)="sendMessage()" class="btn-send" [disabled]="!newMessage.trim()">
+                <i class="fas fa-paper-plane"></i> Send
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="panel-actions">
+          <button *ngIf="selectedOrder.status === 'pending'"
+                  class="btn-primary"
+                  (click)="updateOrderStatus(selectedOrder.id, 'in_progress')">
+            <i class="fas fa-play"></i> Start Working
+          </button>
+
+          <button *ngIf="selectedOrder.status === 'in_progress'"
+                  class="btn-success"
+                  (click)="deliverOrder(selectedOrder.id)">
+            <i class="fas fa-check"></i> Deliver Order
+          </button>
+
+          <button *ngIf="selectedOrder.status === 'delivered'"
+                  class="btn-warning"
+                  (click)="requestRevision(selectedOrder.id)">
+            <i class="fas fa-redo"></i> Request Revision
+          </button>
+
+          <button *ngIf="selectedOrder.status === 'pending' || selectedOrder.status === 'in_progress'"
+                  class="btn-danger"
+                  (click)="cancelOrder(selectedOrder.id)">
+            <i class="fas fa-times-circle"></i> Cancel Order
+          </button>
+
+          <button class="btn-secondary"
+                  (click)="navigateToOrderDetails(selectedOrder.id)">
+            <i class="fas fa-external-link-alt"></i> Full Details
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
