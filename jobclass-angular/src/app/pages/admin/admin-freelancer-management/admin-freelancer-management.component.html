@@ -1,0 +1,473 @@
+<div class="admin-freelancer-container">
+  <!-- Header -->
+  <div class="admin-header">
+    <div class="header-content">
+      <h1><i class="fas fa-user-tie"></i> Freelancer Management</h1>
+      <p class="subtitle">Monitor and manage all freelancers on the platform</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-export" (click)="exportFreelancerData()">
+        <i class="fas fa-download"></i> Export Data
+      </button>
+      <button class="btn-message" (click)="sendBulkMessage()">
+        <i class="fas fa-envelope"></i> Bulk Message
+      </button>
+      <button class="btn-primary" routerLink="/admin/freelancer/invite">
+        <i class="fas fa-user-plus"></i> Invite Freelancer
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon blue">
+        <i class="fas fa-users"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.totalFreelancers }}</h3>
+        <p>Total Freelancers</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon green">
+        <i class="fas fa-user-check"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.activeFreelancers }}</h3>
+        <p>Active Freelancers</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon orange">
+        <i class="fas fa-user-clock"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.pendingApprovals }}</h3>
+        <p>Pending Approvals</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon red">
+        <i class="fas fa-user-slash"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.suspendedAccounts }}</h3>
+        <p>Suspended/Banned</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon purple">
+        <i class="fas fa-dollar-sign"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ formatCurrency(stats.totalRevenue) }}</h3>
+        <p>Platform Revenue</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon yellow">
+        <i class="fas fa-star"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.avgRating | number:'1.1-1' }}/5</h3>
+        <p>Average Rating</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section">
+    <div class="search-bar">
+      <i class="fas fa-search"></i>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        (input)="onSearch()"
+        placeholder="Search by name, email, username, or skills...">
+    </div>
+
+    <div class="filter-controls">
+      <div class="filter-group">
+        <label>Status:</label>
+        <select [(ngModel)]="filterStatus" (change)="onFilterChange()">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="suspended">Suspended</option>
+          <option value="banned">Banned</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Verification:</label>
+        <select [(ngModel)]="filterVerification" (change)="onFilterChange()">
+          <option value="all">All Verification</option>
+          <option value="verified">Verified</option>
+          <option value="pending">Pending</option>
+          <option value="unverified">Unverified</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Category:</label>
+        <select [(ngModel)]="filterCategory" (change)="onFilterChange()">
+          <option value="all">All Categories</option>
+          <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Sort by:</label>
+        <select [(ngModel)]="sortBy" (change)="onFilterChange()">
+          <option value="joinDate">Join Date</option>
+          <option value="earnings">Total Earnings</option>
+          <option value="rating">Rating</option>
+          <option value="jobs">Completed Jobs</option>
+          <option value="lastActive">Last Active</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Freelancers Table -->
+  <div class="table-container">
+    <table class="freelancers-table">
+      <thead>
+        <tr>
+          <th>Freelancer</th>
+          <th>Status</th>
+          <th>Verification</th>
+          <th>Category</th>
+          <th>Rating</th>
+          <th>Jobs</th>
+          <th>Earnings</th>
+          <th>Last Active</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let freelancer of filteredFreelancers">
+          <td>
+            <div class="user-info">
+              <img [src]="freelancer.avatar" [alt]="freelancer.fullName" class="user-avatar">
+              <div>
+                <div class="user-name">{{ freelancer.fullName }}</div>
+                <div class="user-username">@{{ freelancer.username }}</div>
+                <div class="user-email">{{ freelancer.email }}</div>
+              </div>
+              <div class="profile-completeness">
+                <div class="progress-bar">
+                  <div class="progress-fill" [style.width.%]="freelancer.profileCompleteness"></div>
+                </div>
+                <span>{{ freelancer.profileCompleteness }}% Complete</span>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="getStatusBadgeClass(freelancer.status)">
+              {{ freelancer.status | titlecase }}
+            </span>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="getVerificationBadgeClass(freelancer.verificationStatus)">
+              <i *ngIf="freelancer.verificationStatus === 'verified'" class="fas fa-check-circle"></i>
+              {{ freelancer.verificationStatus | titlecase }}
+            </span>
+          </td>
+          <td>{{ freelancer.category }}</td>
+          <td>
+            <div class="rating">
+              <i class="fas fa-star"></i>
+              <span>{{ freelancer.rating > 0 ? (freelancer.rating | number:'1.1-1') : 'N/A' }}</span>
+            </div>
+          </td>
+          <td>
+            <div class="jobs-info">
+              <span class="completed">{{ freelancer.completedJobs }} completed</span>
+              <span class="active" *ngIf="freelancer.activeJobs > 0">
+                {{ freelancer.activeJobs }} active
+              </span>
+            </div>
+          </td>
+          <td class="earnings">{{ formatCurrency(freelancer.totalEarnings) }}</td>
+          <td class="last-active">{{ getDaysAgo(freelancer.lastActive) }}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-action" (click)="viewFreelancerDetails(freelancer)" title="View Details">
+                <i class="fas fa-eye"></i>
+              </button>
+
+              <button *ngIf="freelancer.status === 'pending'"
+                      class="btn-action success"
+                      (click)="approveFreelancer(freelancer.id)"
+                      title="Approve">
+                <i class="fas fa-check"></i>
+              </button>
+
+              <button *ngIf="freelancer.status === 'pending'"
+                      class="btn-action danger"
+                      (click)="rejectFreelancer(freelancer.id)"
+                      title="Reject">
+                <i class="fas fa-times"></i>
+              </button>
+
+              <button *ngIf="freelancer.status === 'active'"
+                      class="btn-action warning"
+                      (click)="suspendFreelancer(freelancer.id)"
+                      title="Suspend">
+                <i class="fas fa-pause"></i>
+              </button>
+
+              <button *ngIf="freelancer.status === 'active' || freelancer.status === 'suspended'"
+                      class="btn-action danger"
+                      (click)="banFreelancer(freelancer.id)"
+                      title="Ban">
+                <i class="fas fa-ban"></i>
+              </button>
+
+              <button *ngIf="freelancer.status === 'suspended' || freelancer.status === 'banned'"
+                      class="btn-action success"
+                      (click)="reactivateFreelancer(freelancer.id)"
+                      title="Reactivate">
+                <i class="fas fa-undo"></i>
+              </button>
+
+              <div class="dropdown">
+                <button class="btn-action" title="More Actions">
+                  <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div class="dropdown-menu">
+                  <a (click)="viewDocuments(freelancer)">
+                    <i class="fas fa-file-alt"></i> View Documents
+                  </a>
+                  <a (click)="viewFreelancerServices(freelancer)">
+                    <i class="fas fa-briefcase"></i> View Services
+                  </a>
+                  <a (click)="viewFreelancerEarnings(freelancer)">
+                    <i class="fas fa-chart-line"></i> View Earnings
+                  </a>
+                  <a (click)="initiateManualPayout(freelancer)">
+                    <i class="fas fa-money-check"></i> Manual Payout
+                  </a>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div *ngIf="filteredFreelancers.length === 0" class="no-results">
+      <i class="fas fa-search"></i>
+      <p>No freelancers found matching your criteria</p>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" *ngIf="totalPages > 1">
+    <button
+      class="page-btn"
+      [disabled]="currentPage === 1"
+      (click)="onPageChange(currentPage - 1)">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+
+    <button
+      *ngFor="let page of [].constructor(totalPages); let i = index"
+      class="page-btn"
+      [class.active]="currentPage === i + 1"
+      (click)="onPageChange(i + 1)">
+      {{ i + 1 }}
+    </button>
+
+    <button
+      class="page-btn"
+      [disabled]="currentPage === totalPages"
+      (click)="onPageChange(currentPage + 1)">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+
+  <!-- Details Modal -->
+  <div class="modal" *ngIf="showDetailsModal">
+    <div class="modal-content large">
+      <div class="modal-header">
+        <h2>Freelancer Details</h2>
+        <button class="btn-close" (click)="showDetailsModal = false">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" *ngIf="selectedFreelancer">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <img [src]="selectedFreelancer.avatar" [alt]="selectedFreelancer.fullName" class="profile-avatar">
+            </div>
+            <div class="info-item">
+              <label>Full Name:</label>
+              <span>{{ selectedFreelancer.fullName }}</span>
+            </div>
+            <div class="info-item">
+              <label>Username:</label>
+              <span>@{{ selectedFreelancer.username }}</span>
+            </div>
+            <div class="info-item">
+              <label>Email:</label>
+              <span>{{ selectedFreelancer.email }}</span>
+            </div>
+            <div class="info-item">
+              <label>Country:</label>
+              <span>{{ selectedFreelancer.country }}</span>
+            </div>
+            <div class="info-item">
+              <label>Join Date:</label>
+              <span>{{ selectedFreelancer.joinDate | date:'mediumDate' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Skills -->
+        <div class="detail-section">
+          <h3>Skills</h3>
+          <div class="skills-list">
+            <span *ngFor="let skill of selectedFreelancer.skills" class="skill-tag">
+              {{ skill }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="detail-section">
+          <h3>Performance Metrics</h3>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <i class="fas fa-star"></i>
+              <div class="metric-value">{{ selectedFreelancer.rating | number:'1.1-1' }}</div>
+              <div class="metric-label">Rating</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-check-circle"></i>
+              <div class="metric-value">{{ selectedFreelancer.completedJobs }}</div>
+              <div class="metric-label">Completed Jobs</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-spinner"></i>
+              <div class="metric-value">{{ selectedFreelancer.activeJobs }}</div>
+              <div class="metric-label">Active Jobs</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-dollar-sign"></i>
+              <div class="metric-value">{{ formatCurrency(selectedFreelancer.totalEarnings) }}</div>
+              <div class="metric-label">Total Earnings</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Violations -->
+        <div class="detail-section" *ngIf="selectedFreelancer.violations && selectedFreelancer.violations.length > 0">
+          <h3>Violations History</h3>
+          <div class="violations-list">
+            <div *ngFor="let violation of selectedFreelancer.violations" class="violation-item">
+              <div class="violation-header">
+                <span class="violation-type">{{ violation.type | titlecase }}</span>
+                <span class="violation-severity" [ngClass]="getSeverityClass(violation.severity)">
+                  {{ violation.severity | uppercase }}
+                </span>
+                <span class="violation-date">{{ violation.date | date:'short' }}</span>
+              </div>
+              <p>{{ violation.description }}</p>
+              <div *ngIf="violation.action" class="violation-action">
+                Action taken: {{ violation.action | titlecase }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Services -->
+        <div class="detail-section" *ngIf="selectedFreelancer.services && selectedFreelancer.services.length > 0">
+          <h3>Active Services</h3>
+          <div class="services-list">
+            <div *ngFor="let service of selectedFreelancer.services" class="service-item">
+              <div class="service-title">{{ service.title }}</div>
+              <div class="service-meta">
+                <span><i class="fas fa-tag"></i> {{ service.category }}</span>
+                <span><i class="fas fa-dollar-sign"></i> {{ formatCurrency(service.price) }}</span>
+                <span><i class="fas fa-star"></i> {{ service.rating }}</span>
+                <span><i class="fas fa-shopping-cart"></i> {{ service.orders }} orders</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="showDetailsModal = false">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Modal -->
+  <div class="modal" *ngIf="showActionModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>{{ actionForm.get('action')?.value === 'suspend' ? 'Suspend' : 'Ban' }} Freelancer</h2>
+        <button class="btn-close" (click)="showActionModal = false">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form [formGroup]="actionForm" (ngSubmit)="submitAction()">
+        <div class="modal-body">
+          <div class="warning-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>
+              You are about to {{ actionForm.get('action')?.value }}
+              <strong>{{ selectedFreelancer?.fullName }}</strong>.
+              This action will immediately affect their account access.
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label>Reason <span class="required">*</span></label>
+            <textarea formControlName="reason" rows="4" placeholder="Provide a detailed reason..."></textarea>
+          </div>
+
+          <div class="form-group" *ngIf="actionForm.get('action')?.value === 'suspend'">
+            <label>Suspension Duration (days)</label>
+            <input type="number" formControlName="duration" min="1" placeholder="Leave empty for indefinite">
+          </div>
+
+          <div class="form-group">
+            <label>Message to Freelancer</label>
+            <textarea formControlName="message" rows="3" placeholder="Optional message to the freelancer..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="sendEmail">
+              Send email notification to freelancer
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="showActionModal = false">Cancel</button>
+          <button type="submit" class="btn-danger" [disabled]="!actionForm.valid">
+            {{ actionForm.get('action')?.value === 'suspend' ? 'Suspend' : 'Ban' }} Freelancer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

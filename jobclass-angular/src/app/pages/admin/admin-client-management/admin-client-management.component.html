@@ -1,0 +1,663 @@
+<div class="admin-client-container">
+  <!-- Header -->
+  <div class="admin-header">
+    <div class="header-content">
+      <h1><i class="fas fa-users-cog"></i> Client Management</h1>
+      <p class="subtitle">Monitor and manage all clients and buyers on the platform</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-export" (click)="exportClientData()">
+        <i class="fas fa-download"></i> Export Data
+      </button>
+      <button class="btn-message" (click)="sendBulkMessage()">
+        <i class="fas fa-envelope"></i> Bulk Message
+      </button>
+      <button class="btn-primary" routerLink="/admin/client/invite">
+        <i class="fas fa-user-plus"></i> Invite Client
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon blue">
+        <i class="fas fa-users"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.totalClients }}</h3>
+        <p>Total Clients</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon green">
+        <i class="fas fa-user-check"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.activeClients }}</h3>
+        <p>Active Clients</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon purple">
+        <i class="fas fa-certificate"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.verifiedClients }}</h3>
+        <p>Verified Clients</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon cyan">
+        <i class="fas fa-dollar-sign"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ formatCurrency(stats.totalRevenue) }}</h3>
+        <p>Total Revenue</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon orange">
+        <i class="fas fa-shopping-cart"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.totalOrders }}</h3>
+        <p>Total Orders</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon yellow">
+        <i class="fas fa-chart-line"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ formatCurrency(stats.avgOrderValue) }}</h3>
+        <p>Avg Order Value</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon red">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.disputeRate | number:'1.1-1' }}%</h3>
+        <p>Dispute Rate</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon gray">
+        <i class="fas fa-user-slash"></i>
+      </div>
+      <div class="stat-content">
+        <h3>{{ stats.suspendedAccounts }}</h3>
+        <p>Suspended</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section">
+    <div class="search-bar">
+      <i class="fas fa-search"></i>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        (input)="onSearch()"
+        placeholder="Search by name, email, username, or company...">
+    </div>
+
+    <div class="filter-controls">
+      <div class="filter-group">
+        <label>Status:</label>
+        <select [(ngModel)]="filterStatus" (change)="onFilterChange()">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+          <option value="banned">Banned</option>
+          <option value="pending">Pending</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Verification:</label>
+        <select [(ngModel)]="filterVerification" (change)="onFilterChange()">
+          <option value="all">All Verification</option>
+          <option value="verified">Verified</option>
+          <option value="pending">Pending</option>
+          <option value="unverified">Unverified</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Account Type:</label>
+        <select [(ngModel)]="filterAccountType" (change)="onFilterChange()">
+          <option value="all">All Types</option>
+          <option value="individual">Individual</option>
+          <option value="business">Business</option>
+          <option value="enterprise">Enterprise</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Sort by:</label>
+        <select [(ngModel)]="sortBy" (change)="onFilterChange()">
+          <option value="joinDate">Join Date</option>
+          <option value="totalSpent">Total Spent</option>
+          <option value="totalOrders">Total Orders</option>
+          <option value="avgOrderValue">Avg Order Value</option>
+          <option value="lastActive">Last Active</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clients Table -->
+  <div class="table-container">
+    <table class="clients-table">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Account Type</th>
+          <th>Status</th>
+          <th>Verification</th>
+          <th>Orders</th>
+          <th>Total Spent</th>
+          <th>Avg Order</th>
+          <th>Disputes</th>
+          <th>Last Active</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let client of filteredClients">
+          <td>
+            <div class="user-info">
+              <img [src]="client.avatar" [alt]="client.fullName" class="user-avatar">
+              <div>
+                <div class="user-name">{{ client.fullName }}</div>
+                <div class="user-username">@{{ client.username }}</div>
+                <div class="user-email">{{ client.email }}</div>
+                <div class="user-company" *ngIf="client.company">
+                  <i class="fas fa-building"></i> {{ client.company }}
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="getAccountTypeBadgeClass(client.accountType)">
+              <i *ngIf="client.accountType === 'enterprise'" class="fas fa-crown"></i>
+              {{ client.accountType | titlecase }}
+            </span>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="getStatusBadgeClass(client.status)">
+              {{ client.status | titlecase }}
+            </span>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="getVerificationBadgeClass(client.verificationStatus)">
+              <i *ngIf="client.verificationStatus === 'verified'" class="fas fa-check-circle"></i>
+              {{ client.verificationStatus | titlecase }}
+            </span>
+          </td>
+          <td>
+            <div class="orders-info">
+              <span class="total">{{ client.totalOrders }} total</span>
+              <span class="active" *ngIf="client.activeOrders > 0">
+                {{ client.activeOrders }} active
+              </span>
+              <span class="completed">{{ client.completedOrders }} completed</span>
+            </div>
+          </td>
+          <td class="amount">{{ formatCurrency(client.totalSpent) }}</td>
+          <td class="amount">{{ formatCurrency(client.averageOrderValue) }}</td>
+          <td>
+            <span class="dispute-count" [class.has-disputes]="client.disputedOrders > 0">
+              {{ client.disputedOrders }}
+            </span>
+          </td>
+          <td class="last-active">{{ getDaysAgo(client.lastActive) }}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-action" (click)="viewClientDetails(client)" title="View Details">
+                <i class="fas fa-eye"></i>
+              </button>
+
+              <button *ngIf="client.verificationStatus === 'unverified' || client.verificationStatus === 'pending'"
+                      class="btn-action success"
+                      (click)="verifyClient(client.id)"
+                      title="Verify">
+                <i class="fas fa-check"></i>
+              </button>
+
+              <button *ngIf="client.status === 'active'"
+                      class="btn-action warning"
+                      (click)="suspendClient(client.id)"
+                      title="Suspend">
+                <i class="fas fa-pause"></i>
+              </button>
+
+              <button *ngIf="client.status === 'active' || client.status === 'suspended'"
+                      class="btn-action danger"
+                      (click)="banClient(client.id)"
+                      title="Ban">
+                <i class="fas fa-ban"></i>
+              </button>
+
+              <button *ngIf="client.status === 'suspended' || client.status === 'banned'"
+                      class="btn-action success"
+                      (click)="reactivateClient(client.id)"
+                      title="Reactivate">
+                <i class="fas fa-undo"></i>
+              </button>
+
+              <div class="dropdown">
+                <button class="btn-action" title="More Actions">
+                  <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div class="dropdown-menu">
+                  <a (click)="viewClientOrders(client)">
+                    <i class="fas fa-shopping-cart"></i> View Orders
+                  </a>
+                  <a (click)="viewClientDisputes(client)">
+                    <i class="fas fa-exclamation-circle"></i> View Disputes
+                  </a>
+                  <a (click)="viewPaymentHistory(client)">
+                    <i class="fas fa-credit-card"></i> Payment History
+                  </a>
+                  <a (click)="viewActivityLog(client)">
+                    <i class="fas fa-history"></i> Activity Log
+                  </a>
+                  <a (click)="processRefund(client)">
+                    <i class="fas fa-undo-alt"></i> Process Refund
+                  </a>
+                  <a (click)="addCredit(client)">
+                    <i class="fas fa-plus-circle"></i> Add Credit
+                  </a>
+                  <a *ngIf="client.accountType !== 'enterprise'" (click)="upgradeAccount(client)">
+                    <i class="fas fa-arrow-up"></i> Upgrade Account
+                  </a>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div *ngIf="filteredClients.length === 0" class="no-results">
+      <i class="fas fa-search"></i>
+      <p>No clients found matching your criteria</p>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" *ngIf="totalPages > 1">
+    <button
+      class="page-btn"
+      [disabled]="currentPage === 1"
+      (click)="onPageChange(currentPage - 1)">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+
+    <button
+      *ngFor="let page of [].constructor(totalPages); let i = index"
+      class="page-btn"
+      [class.active]="currentPage === i + 1"
+      (click)="onPageChange(i + 1)">
+      {{ i + 1 }}
+    </button>
+
+    <button
+      class="page-btn"
+      [disabled]="currentPage === totalPages"
+      (click)="onPageChange(currentPage + 1)">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+
+  <!-- Details Modal -->
+  <div class="modal" *ngIf="showDetailsModal">
+    <div class="modal-content large">
+      <div class="modal-header">
+        <h2>Client Details</h2>
+        <button class="btn-close" (click)="showDetailsModal = false">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" *ngIf="selectedClient">
+        <!-- Basic Information -->
+        <div class="detail-section">
+          <h3>Basic Information</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <img [src]="selectedClient.avatar" [alt]="selectedClient.fullName" class="profile-avatar">
+            </div>
+            <div class="info-item">
+              <label>Full Name:</label>
+              <span>{{ selectedClient.fullName }}</span>
+            </div>
+            <div class="info-item">
+              <label>Username:</label>
+              <span>@{{ selectedClient.username }}</span>
+            </div>
+            <div class="info-item">
+              <label>Email:</label>
+              <span>{{ selectedClient.email }}</span>
+            </div>
+            <div class="info-item" *ngIf="selectedClient.company">
+              <label>Company:</label>
+              <span>{{ selectedClient.company }}</span>
+            </div>
+            <div class="info-item" *ngIf="selectedClient.industry">
+              <label>Industry:</label>
+              <span>{{ selectedClient.industry }}</span>
+            </div>
+            <div class="info-item">
+              <label>Country:</label>
+              <span>{{ selectedClient.country }}</span>
+            </div>
+            <div class="info-item">
+              <label>Account Type:</label>
+              <span class="badge" [ngClass]="getAccountTypeBadgeClass(selectedClient.accountType)">
+                {{ selectedClient.accountType | titlecase }}
+              </span>
+            </div>
+            <div class="info-item">
+              <label>Join Date:</label>
+              <span>{{ selectedClient.joinDate | date:'mediumDate' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Financial Metrics -->
+        <div class="detail-section">
+          <h3>Financial Metrics</h3>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <i class="fas fa-dollar-sign"></i>
+              <div class="metric-value">{{ formatCurrency(selectedClient.totalSpent) }}</div>
+              <div class="metric-label">Total Spent</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-shopping-cart"></i>
+              <div class="metric-value">{{ selectedClient.totalOrders }}</div>
+              <div class="metric-label">Total Orders</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-chart-bar"></i>
+              <div class="metric-value">{{ formatCurrency(selectedClient.averageOrderValue) }}</div>
+              <div class="metric-label">Avg Order Value</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-chart-line"></i>
+              <div class="metric-value">{{ formatCurrency(calculateLifetimeValue(selectedClient)) }}</div>
+              <div class="metric-label">Lifetime Value</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-spinner"></i>
+              <div class="metric-value">{{ selectedClient.activeOrders }}</div>
+              <div class="metric-label">Active Orders</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-exclamation-triangle"></i>
+              <div class="metric-value">{{ selectedClient.disputedOrders }}</div>
+              <div class="metric-label">Disputes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Risk Assessment -->
+        <div class="detail-section">
+          <h3>Risk Assessment</h3>
+          <div class="risk-assessment">
+            <div class="risk-item">
+              <label>Risk Score:</label>
+              <span [ngClass]="getRiskScoreClass(getRiskScore(selectedClient))">
+                {{ getRiskScore(selectedClient) }}
+              </span>
+            </div>
+            <div class="risk-item">
+              <label>Dispute Rate:</label>
+              <span>
+                {{ selectedClient.totalOrders > 0 ?
+                   ((selectedClient.disputedOrders / selectedClient.totalOrders) * 100 | number:'1.1-1') : 0 }}%
+              </span>
+            </div>
+            <div class="risk-item">
+              <label>Payment Issues:</label>
+              <span>None</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Methods -->
+        <div class="detail-section" *ngIf="selectedClient.paymentMethods && selectedClient.paymentMethods.length > 0">
+          <h3>Payment Methods</h3>
+          <div class="payment-methods-list">
+            <div *ngFor="let method of selectedClient.paymentMethods" class="payment-method">
+              <i class="fas" [ngClass]="{
+                'fa-credit-card': method.type === 'credit_card',
+                'fa-cc-paypal': method.type === 'paypal',
+                'fa-university': method.type === 'bank_transfer',
+                'fa-bitcoin': method.type === 'crypto'
+              }"></i>
+              <div class="method-info">
+                <span class="method-type">{{ method.type | titlecase }}</span>
+                <span class="method-details" *ngIf="method.last4">•••• {{ method.last4 }}</span>
+              </div>
+              <span class="default-badge" *ngIf="method.isDefault">Default</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="detail-section" *ngIf="selectedClient.orders && selectedClient.orders.length > 0">
+          <h3>Recent Orders</h3>
+          <div class="orders-list">
+            <div *ngFor="let order of selectedClient.orders" class="order-item">
+              <div class="order-header">
+                <span class="order-id">#{{ order.id }}</span>
+                <span class="order-status" [ngClass]="getOrderStatusClass(order.status)">
+                  {{ order.status | titlecase }}
+                </span>
+              </div>
+              <div class="order-details">
+                <span class="order-service">{{ order.serviceTitle }}</span>
+                <span class="order-freelancer">by {{ order.freelancerName }}</span>
+              </div>
+              <div class="order-footer">
+                <span class="order-amount">{{ formatCurrency(order.amount) }}</span>
+                <span class="order-date">{{ order.orderDate | date:'short' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="showDetailsModal = false">Close</button>
+        <button class="btn-primary" (click)="viewClientOrders(selectedClient!)">View All Orders</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orders Modal -->
+  <div class="modal" *ngIf="showOrdersModal">
+    <div class="modal-content large">
+      <div class="modal-header">
+        <h2>Client Orders - {{ selectedClient?.fullName }}</h2>
+        <button class="btn-close" (click)="showOrdersModal = false">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="orders-table-container">
+          <table class="orders-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Service</th>
+                <th>Freelancer</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Order Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let order of selectedClient?.orders || []">
+                <td>#{{ order.id }}</td>
+                <td>{{ order.serviceTitle }}</td>
+                <td>{{ order.freelancerName }}</td>
+                <td>{{ formatCurrency(order.amount) }}</td>
+                <td>
+                  <span class="order-status" [ngClass]="getOrderStatusClass(order.status)">
+                    {{ order.status | titlecase }}
+                  </span>
+                </td>
+                <td>{{ order.orderDate | date:'short' }}</td>
+                <td>
+                  <button class="btn-action" title="View Order">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn-action warning" title="Process Refund">
+                    <i class="fas fa-undo-alt"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="showOrdersModal = false">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Refund Modal -->
+  <div class="modal" *ngIf="showRefundModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Process Refund</h2>
+        <button class="btn-close" (click)="showRefundModal = false">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form [formGroup]="refundForm" (ngSubmit)="submitRefund()">
+        <div class="modal-body">
+          <div class="refund-info">
+            <i class="fas fa-info-circle"></i>
+            <p>Processing refund for <strong>{{ selectedClient?.fullName }}</strong></p>
+          </div>
+
+          <div class="form-group">
+            <label>Order ID <span class="required">*</span></label>
+            <select formControlName="orderId">
+              <option value="">Select an order</option>
+              <option *ngFor="let order of selectedClient?.orders" [value]="order.id">
+                #{{ order.id }} - {{ order.serviceTitle }} ({{ formatCurrency(order.amount) }})
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" formControlName="fullRefund">
+              Full Refund
+            </label>
+          </div>
+
+          <div class="form-group" *ngIf="!refundForm.get('fullRefund')?.value">
+            <label>Refund Amount <span class="required">*</span></label>
+            <input type="number" formControlName="amount" min="0" step="0.01">
+          </div>
+
+          <div class="form-group">
+            <label>Reason <span class="required">*</span></label>
+            <textarea formControlName="reason" rows="4" placeholder="Provide refund reason..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" formControlName="notifyClient">
+              Send notification to client
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="showRefundModal = false">Cancel</button>
+          <button type="submit" class="btn-primary" [disabled]="!refundForm.valid">Process Refund</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Action Modal -->
+  <div class="modal" *ngIf="showActionModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>{{ actionForm.get('action')?.value === 'suspend' ? 'Suspend' : 'Ban' }} Client</h2>
+        <button class="btn-close" (click)="showActionModal = false">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form [formGroup]="actionForm" (ngSubmit)="submitAction()">
+        <div class="modal-body">
+          <div class="warning-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>
+              You are about to {{ actionForm.get('action')?.value }}
+              <strong>{{ selectedClient?.fullName }}</strong>.
+              This will affect their ability to place orders and access the platform.
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label>Reason <span class="required">*</span></label>
+            <textarea formControlName="reason" rows="4" placeholder="Provide a detailed reason..."></textarea>
+          </div>
+
+          <div class="form-group" *ngIf="actionForm.get('action')?.value === 'suspend'">
+            <label>Suspension Duration (days)</label>
+            <input type="number" formControlName="duration" min="1" placeholder="Leave empty for indefinite">
+          </div>
+
+          <div class="form-group">
+            <label>Message to Client</label>
+            <textarea formControlName="message" rows="3" placeholder="Optional message to the client..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <input type="checkbox" formControlName="sendEmail">
+              Send email notification to client
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="showActionModal = false">Cancel</button>
+          <button type="submit" class="btn-danger" [disabled]="!actionForm.valid">
+            {{ actionForm.get('action')?.value === 'suspend' ? 'Suspend' : 'Ban' }} Client
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
