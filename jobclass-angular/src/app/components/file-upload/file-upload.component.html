@@ -1,0 +1,154 @@
+<div class="file-upload-container">
+  <!-- Hidden file input -->
+  <input
+    #fileInput
+    type="file"
+    [accept]="accept"
+    [multiple]="multiple"
+    (change)="onFileSelect($event)"
+    hidden
+  />
+
+  <!-- Drop Zone -->
+  <div
+    class="drop-zone"
+    [class.drag-over]="isDragOver"
+    [class.has-files]="uploadedFiles.length > 0"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+    (click)="openFileDialog()"
+  >
+    <div class="drop-zone-content" *ngIf="uploadedFiles.length === 0">
+      <i class="fas fa-cloud-upload-alt"></i>
+      <h3>Drag & Drop files here</h3>
+      <p>or click to browse</p>
+      <div class="file-info">
+        <span *ngIf="uploadType === 'image'">
+          <i class="fas fa-image"></i> Images only
+        </span>
+        <span *ngIf="uploadType === 'document'">
+          <i class="fas fa-file-alt"></i> Documents only
+        </span>
+        <span>
+          <i class="fas fa-weight"></i> Max size: {{ fileUploadService.formatFileSize(maxSize) }}
+        </span>
+        <span *ngIf="multiple">
+          <i class="fas fa-copy"></i> Max files: {{ maxFiles }}
+        </span>
+      </div>
+    </div>
+
+    <!-- File List -->
+    <div class="file-list" *ngIf="uploadedFiles.length > 0">
+      <div class="file-list-header">
+        <h4>
+          <i class="fas fa-paperclip"></i>
+          {{ uploadedFiles.length }} {{ uploadedFiles.length === 1 ? 'File' : 'Files' }} Selected
+        </h4>
+        <div class="header-actions">
+          <button class="btn-clear" (click)="clearAll(); $event.stopPropagation()">
+            <i class="fas fa-trash"></i> Clear All
+          </button>
+          <button class="btn-add" (click)="openFileDialog(); $event.stopPropagation()">
+            <i class="fas fa-plus"></i> Add More
+          </button>
+        </div>
+      </div>
+
+      <div class="files-grid">
+        <div *ngFor="let file of uploadedFiles" class="file-item">
+          <!-- Image Preview -->
+          <div class="file-preview" *ngIf="file.localUrl && showPreview">
+            <img [src]="file.localUrl" [alt]="file.fileName" />
+          </div>
+
+          <!-- File Icon (for non-images) -->
+          <div class="file-icon" *ngIf="!file.localUrl || !showPreview">
+            <i class="fas" [ngClass]="getFileIcon(file.fileType)"></i>
+          </div>
+
+          <!-- File Info -->
+          <div class="file-info">
+            <div class="file-name" [title]="file.fileName">
+              {{ file.fileName }}
+            </div>
+            <div class="file-size">
+              {{ fileUploadService.formatFileSize(file.fileSize) }}
+            </div>
+          </div>
+
+          <!-- Upload Progress -->
+          <div class="upload-progress" *ngIf="uploadProgress.get(file.fileName) as progress">
+            <div class="progress-bar" *ngIf="progress.status === 'uploading'">
+              <div
+                class="progress-fill"
+                [style.width.%]="progress.progress"
+                [style.background]="getProgressColor(progress)"
+              ></div>
+            </div>
+
+            <div class="progress-status">
+              <span *ngIf="progress.status === 'pending'" class="status-pending">
+                <i class="fas fa-clock"></i> Pending
+              </span>
+              <span *ngIf="progress.status === 'uploading'" class="status-uploading">
+                <i class="fas fa-spinner fa-spin"></i> {{ progress.progress }}%
+              </span>
+              <span *ngIf="progress.status === 'completed'" class="status-completed">
+                <i class="fas fa-check-circle"></i> Uploaded
+              </span>
+              <span *ngIf="progress.status === 'error'" class="status-error">
+                <i class="fas fa-exclamation-triangle"></i> Error
+                <button class="btn-retry" (click)="retryUpload(file.fileName); $event.stopPropagation()">
+                  <i class="fas fa-redo"></i> Retry
+                </button>
+              </span>
+            </div>
+
+            <div class="error-message" *ngIf="progress.error">
+              {{ progress.error }}
+            </div>
+          </div>
+
+          <!-- Remove Button -->
+          <button
+            class="btn-remove"
+            (click)="removeFile(file.id); $event.stopPropagation()"
+            [disabled]="isUploading && uploadProgress.get(file.fileName)?.status === 'uploading'"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Button (if auto-upload is disabled) -->
+  <div class="upload-actions" *ngIf="!autoUpload && selectedFiles.length > 0">
+    <button
+      class="btn-upload"
+      (click)="uploadFiles()"
+      [disabled]="isUploading"
+    >
+      <i class="fas fa-upload"></i>
+      {{ isUploading ? 'Uploading...' : 'Upload Files' }}
+    </button>
+  </div>
+
+  <!-- File Type Examples -->
+  <div class="file-examples" *ngIf="uploadedFiles.length === 0">
+    <p class="examples-label">Accepted formats:</p>
+    <div class="examples-list">
+      <span *ngIf="uploadType === 'image'" class="example-item">
+        <i class="fas fa-check"></i> JPG, PNG, GIF, WebP, SVG
+      </span>
+      <span *ngIf="uploadType === 'document'" class="example-item">
+        <i class="fas fa-check"></i> PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, ZIP
+      </span>
+      <span *ngIf="uploadType === 'any'" class="example-item">
+        <i class="fas fa-check"></i> All file types accepted
+      </span>
+    </div>
+  </div>
+</div>
